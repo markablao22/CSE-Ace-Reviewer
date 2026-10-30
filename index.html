@@ -221,7 +221,7 @@ function renderAdminPayments(rows){
   $('adminPayments').innerHTML='<h3>Pending payments</h3>'+ (rows.length?rows.map(x=>'<div class="notice"><strong>₱250 request</strong><br>Reference: '+escapeHtml(x.reference)+'<br>Email: '+escapeHtml(x.email||'Unavailable')+'<br>User ID: '+escapeHtml(x.uid)+'<div class="actions"><button class="btn" data-review-payment="'+escapeHtml(x.id)+'" data-decision="approved">Approve verified payment</button><button class="btn secondary" data-review-payment="'+escapeHtml(x.id)+'" data-decision="rejected">Reject</button></div></div>').join(''):'<p class="muted">No pending payment requests.</p>');
 }
 function renderAdminTickets(rows){
-  $('adminTickets').innerHTML='<h3>Open support tickets</h3>'+ (rows.length?rows.map(x=>'<div class="notice"><strong>'+escapeHtml(x.subject)+'</strong><br>'+escapeHtml(x.message)+'<br>User: '+escapeHtml(x.uid)+'<input class="field" maxlength="2000" id="reply-'+escapeHtml(x.id)+'" placeholder="Reply to customer"><button class="btn secondary" data-reply-ticket="'+escapeHtml(x.id)+'">Send reply</button></div>').join(''):'<p class="muted">No open support tickets.</p>');
+  $('adminTickets').innerHTML='<h3>Open support tickets</h3>'+ (rows.length?rows.map(x=>'<div class="notice"><strong>'+escapeHtml(x.subject)+'</strong><br>'+escapeHtml(x.message)+'<br>Email: '+escapeHtml(x.email||'Unavailable')+'<br>User ID: '+escapeHtml(x.uid)+'<input class="field" maxlength="2000" id="reply-'+escapeHtml(x.id)+'" placeholder="Reply to customer"><button class="btn secondary" data-reply-ticket="'+escapeHtml(x.id)+'">Send reply</button></div>').join(''):'<p class="muted">No open support tickets.</p>');
 }
 $('paymentForm').onsubmit=async event=>{
   event.preventDefault();const account=firebaseAuth.currentUser,reference=$('paymentReference').value.trim();
@@ -234,7 +234,7 @@ $('paymentForm').onsubmit=async event=>{
 $('supportForm').onsubmit=async event=>{
   event.preventDefault();const account=firebaseAuth.currentUser,subject=$('supportSubject').value.trim(),message=$('supportMessage').value.trim();
   if(!account){$('myTickets').textContent='Sign in to submit a support ticket.';return;}
-  try{await addDoc(collection(db,'supportTickets'),{uid:account.uid,subject,message,status:'open',createdAt:serverTimestamp()});$('supportSubject').value='';$('supportMessage').value='';$('myTickets').textContent='Ticket submitted. Your status will appear here.';loadAccountData();}
+  try{const ticketRef=doc(db,'supportTickets',account.uid),existing=await getDoc(ticketRef),ticket={uid:account.uid,email:account.email||'',subject,message,status:'open',createdAt:serverTimestamp()};if(existing.exists()&&existing.data().status!=='answered')throw new Error('You already have an open support ticket.');await setDoc(ticketRef,ticket);$('supportSubject').value='';$('supportMessage').value='';$('myTickets').textContent='Ticket submitted. Your status will appear here.';loadAccountData();}
   catch(e){$('myTickets').textContent='Could not submit ticket. Check your sign-in and security rules.';}
 };
 $('adminPayments').onclick=async event=>{
