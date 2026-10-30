@@ -57,6 +57,23 @@ service cloud.firestore {
         && request.resource.data.status == 'pending'
         && request.resource.data.createdAt == request.time;
       allow read: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow update: if isOwner(resource.data.uid)
+        && requestId == request.auth.uid
+        && resource.data.status == 'answered'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'subject', 'message', 'status', 'createdAt', 'reply', 'repliedBy', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'subject', 'message', 'status', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email is string
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.subject is string
+        && request.resource.data.subject.size() >= 1
+        && request.resource.data.subject.size() <= 100
+        && request.resource.data.message is string
+        && request.resource.data.message.size() >= 1
+        && request.resource.data.message.size() <= 2000
+        && request.resource.data.status == 'open'
+        && request.resource.data.createdAt == request.time;
       allow update: if isAdmin()
         && resource.data.status == 'pending'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedBy', 'reviewedAt'])
@@ -82,9 +99,13 @@ service cloud.firestore {
 
     match /supportTickets/{ticketId} {
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid', 'subject', 'message', 'status', 'createdAt'])
-        && request.resource.data.keys().hasAll(['uid', 'subject', 'message', 'status', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'subject', 'message', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['uid', 'email', 'subject', 'message', 'status', 'createdAt'])
+        && requestId == request.auth.uid
         && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email is string
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.email.size() <= 254
         && request.resource.data.subject is string
         && request.resource.data.subject.size() >= 1
         && request.resource.data.subject.size() <= 100
