@@ -39,8 +39,8 @@ service cloud.firestore {
         && request.resource.data.answered <= 10000000
         && request.resource.data.updatedAt == request.time;
     }
-    function validPaymentCreate(uid) {
-      return requestId == uid
+    function validPaymentCreate(uid, documentId) {
+      return documentId == uid
         && request.resource.data.keys().hasOnly(['uid', 'email', 'reference', 'amount', 'status', 'createdAt'])
         && request.resource.data.keys().hasAll(['uid', 'email', 'reference', 'amount', 'status', 'createdAt'])
         && request.resource.data.uid == uid
@@ -52,7 +52,7 @@ service cloud.firestore {
         && request.resource.data.status == 'pending'
         && request.resource.data.createdAt == request.time;
     }
-    function validPaymentResubmit(uid) {
+    function validPaymentResubmit(uid, documentId) {
       return requestId == uid
         && resource.data.uid == uid
         && resource.data.status == 'rejected'
@@ -93,8 +93,8 @@ service cloud.firestore {
         && request.resource.data.status == 'open'
         && request.resource.data.createdAt == request.time;
     }
-    function validSupportReopen(uid) {
-      return ticketId == uid
+    function validSupportReopen(uid, documentId) {
+      return documentId == uid
         && resource.data.uid == uid
         && resource.data.status == 'answered'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'subject', 'message', 'status', 'createdAt', 'reply', 'repliedBy', 'updatedAt'])
@@ -141,10 +141,10 @@ service cloud.firestore {
 
     // paymentRequests/{uid}: one request per account; only a rejected request can be retried.
     match /paymentRequests/{requestId} {
-      allow create: if signedIn() && validPaymentCreate(request.auth.uid);
+      allow create: if signedIn() && validPaymentCreate(request.auth.uid, requestId);
       allow read: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
-      allow update: if isAdmin() && validPaymentReview();
-      allow update: if signedIn() && validPaymentResubmit(request.auth.uid);
+      allow update: if isAdmin() && requestId == resource.data.uid && validPaymentReview();
+      allow update: if signedIn() && validPaymentResubmit(request.auth.uid, requestId);
       allow delete: if false;
     }
 
@@ -152,8 +152,8 @@ service cloud.firestore {
     match /supportTickets/{ticketId} {
       allow create: if isOwner(ticketId) && validSupport(request.auth.uid);
       allow read: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
-      allow update: if isOwner(ticketId) && validSupportReopen(request.auth.uid);
-      allow update: if isAdmin() && validSupportReply();
+      allow update: if isOwner(ticketId) && validSupportReopen(request.auth.uid, ticketId);
+      allow update: if isAdmin() && ticketId == resource.data.uid && validSupportReply();
       allow delete: if false;
     }
 
