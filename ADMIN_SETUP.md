@@ -35,3 +35,15 @@ To revoke the role, use the same trusted Admin SDK environment and remove only t
 - The claim grants broad admin powers over payment reviews, support tickets, and premium access. Keep it limited to the designated project owner.
 - Admin claim setup and publishing Firestore Rules are separate steps. The payment button remains disabled in the draft until the code is intentionally enabled after rule review.
 - Admin approval is manual GCash verification. Check the actual transaction in the GCash account before approving; a reference number alone is not proof of payment.
+
+## Import the private Premium question bank
+
+The app reads Premium items from `premiumQuestionBanks/v1`, which the Rules allow only to active Premium users and trusted admins. The importer uses the Admin SDK, so run it only from a trusted machine that is authorized for this Firebase project.
+
+1. Prepare a fresh 470-item JSON array matching the app format: `[category, prompt, choices, answerIndex, explanation]`. Do not use the previously generated draft items as paid-only content; those were committed to this public repository and remain visible in its commit history.
+2. In a trusted local folder, install the importer dependency from `tools/premium-import/package.json` with `npm install`.
+3. Sign into Google Cloud Application Default Credentials with an identity authorized to write to this project. Do not create or commit service-account keys for this.
+4. Run `node import-questions.mjs /path/to/private-question-bank.json` from the importer folder. The script validates the shape and writes one Firestore document. Keep the source JSON private and remove any local copy you no longer need.
+5. Sign in as a Premium test account after rules and test data are configured; confirm the app can read all 470 items. A free account should receive a permission error if it tries to fetch the bank.
+
+The payment button remains disabled in the web app. Do not enable it until the bank is freshly prepared, the Rules have been reviewed and deployed, and the designated admin account is set up.
