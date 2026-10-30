@@ -199,7 +199,7 @@ function showTickets(rows){
 }
 let accountListeners=[];
 function stopAccountListeners(){accountListeners.forEach(stop=>stop());accountListeners=[];}
-async async function loadAccountData(){
+async function loadAccountData(){
   stopAccountListeners();
   const account=firebaseAuth.currentUser;
   if(!account){$('paymentMsg').textContent='Sign in to submit a payment request or support ticket.';return;}
