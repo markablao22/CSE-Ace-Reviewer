@@ -59,7 +59,7 @@ import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   signOut, onAuthStateChanged, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, query, where, limit, addDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, where, limit, addDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAyoV1rkLGejnp9hLTYsY7Ooe7kgni8Z9k",
@@ -137,7 +137,7 @@ const BASE_BANK=[
 ["General Information","What is the term of office of the Philippine President?",["3 years","4 years","5 years","6 years"],3,"The President serves a six-year term under the 1987 Constitution."],
 ["General Information","Which is a fundamental duty of a Filipino citizen?",["Disregard laws","Pay taxes as required by law","Prevent others from voting","Ignore public issues"],1,"Citizens are expected to obey laws and pay taxes as required."]
 ];
-const BANK=BASE_BANK;
+let premiumQuestionCache=null;
 let premiumAccess=false,adminAccess=false;
 let stopMyPayments=null,stopAdminPayments=null,stopMyTickets=null,stopAdminTickets=null;
 let user=null,category=null,questions=[],answers=[],checked=[],index=0,seconds=0,tick=null,stats={tests:0,correct:0,answered:0};
@@ -228,7 +228,7 @@ $('paymentForm').onsubmit=async event=>{
   if(!account){$('paymentMsg').textContent='Sign in first.';return;}
   if(!PAYMENT_FLOW_READY){$('paymentMsg').textContent='Payment requests are not live yet. Do not send payment.';return;}
   if(reference.length<6){$('paymentMsg').textContent='Enter a valid GCash reference number.';return;}
-  try{await addDoc(collection(db,'paymentRequests'),{uid:account.uid,email:account.email||'',reference,amount:250,status:'pending',createdAt:serverTimestamp()});$('paymentReference').value='';$('paymentMsg').textContent='Request submitted. Premium stays locked until an administrator verifies the payment.';loadAccountData();}
+  try{const paymentRef=doc(db,'paymentRequests',account.uid),existing=await getDoc(paymentRef),requestData={email:account.email||'',reference,amount:250,status:'pending',createdAt:serverTimestamp()};if(existing.exists()){if(existing.data().status!=='rejected')throw new Error('A request is already pending or approved.');await updateDoc(paymentRef,requestData);}else{await setDoc(paymentRef,{uid:account.uid,...requestData});}$('paymentReference').value='';$('paymentMsg').textContent='Request submitted. Premium stays locked until an administrator verifies the payment.';loadAccountData();}
   catch(e){$('paymentMsg').textContent='Could not submit request. Check your sign-in and security rules.';}
 };
 $('supportForm').onsubmit=async event=>{
@@ -266,10 +266,15 @@ async function start(){
   let accessible=BASE_BANK;
   if(premiumAccess){
     try{
-      const bankSnap=await getDoc(doc(db,'premiumQuestionBanks','v1'));
-      const premiumQuestions=bankSnap.exists()?bankSnap.data().questions:null;
-      if(!Array.isArray(premiumQuestions)||premiumQuestions.length!==470)throw new Error('Premium question bank is unavailable.');
-      accessible=[...BASE_BANK,...premiumQuestions];
+      if(!premiumQuestionCache){
+        const bankSnap=await getDoc(doc(db,'premiumQuestionBanks','v1'));
+        const bankData=bankSnap.exists()?bankSnap.data():null;
+        const premiumQuestions=bankData?.questions;
+        if(bankData?.questionBankVersion!==500||!Array.isArray(premiumQuestions)||premiumQuestions.length!==470)throw new Error('Premium question bank is unavailable.');
+        if(!premiumQuestions.every(q=>Array.isArray(q)&&q.length===5&&typeof q[0]==='string'&&typeof q[1]==='string'&&Array.isArray(q[2])&&q[2].length===4&&Number.isInteger(q[3])&&q[3]>=0&&q[3]<4&&typeof q[4]==='string'))throw new Error('Premium question bank contains an invalid item.');
+        premiumQuestionCache=premiumQuestions;
+      }
+      accessible=[...BASE_BANK,...premiumQuestionCache];
     }catch(error){console.error('Premium question bank unavailable:',error);alert('Could not load the Premium question bank. Please contact support.');return;}
   }
   let pool=category?accessible.filter(q=>q[0]===category):[...accessible];
