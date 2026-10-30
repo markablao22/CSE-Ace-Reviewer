@@ -8,11 +8,11 @@ if (!inputPath) {
   process.exit(2);
 }
 
-const questions = JSON.parse(await readFile(inputPath, 'utf8'));
-if (!Array.isArray(questions) || questions.length !== 470) {
+const questionRows = JSON.parse(await readFile(inputPath, 'utf8'));
+if (!Array.isArray(questionRows) || questionRows.length !== 470) {
   throw new Error('Expected exactly 470 Premium questions.');
 }
-for (const [index, question] of questions.entries()) {
+for (const [index, question] of questionRows.entries()) {
   if (!Array.isArray(question) || question.length !== 5 ||
       typeof question[0] !== 'string' || typeof question[1] !== 'string' ||
       !Array.isArray(question[2]) || question[2].length !== 4 ||
@@ -21,6 +21,11 @@ for (const [index, question] of questions.entries()) {
     throw new Error(`Invalid question record at index ${index}.`);
   }
 }
+// Firestore does not accept arrays nested directly inside arrays, so store
+// each question as a map and preserve choices as that map's array field.
+const questions = questionRows.map(([category, prompt, choices, answerIndex, explanation]) => ({
+  category, prompt, choices, answerIndex, explanation
+}));
 const payload = {
   questionBankVersion: 500,
   questions,
