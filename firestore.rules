@@ -1,44 +1,175 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Admin access comes only from a trusted Firebase Auth custom claim.
     function signedIn() { return request.auth != null; }
     function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
     function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function hasActivePremium() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/premiumAccess/$(request.auth.uid))
+        && get(/databases/$(database)/documents/premiumAccess/$(request.auth.uid)).data.active == true
+        && get(/databases/$(database)/documents/premiumAccess/$(request.auth.uid)).data.questionBankVersion == 500;
+    }
+    function validEmail(email) {
+      return email is string
+        && email.size() <= 254
+        && email == request.auth.token.email;
+    }
+    function validProfile(uid) {
+      return request.resource.data.keys().hasOnly(['email', 'displayName', 'createdAt', 'lastLoginAt'])
+        && request.resource.data.keys().hasAll(['email', 'displayName'])
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100;
+    }
+    function validProgress() {
+      return request.resource.data.keys().hasOnly(['tests', 'correct', 'answered', 'updatedAt'])
+        && request.resource.data.keys().hasAll(['tests', 'correct', 'answered', 'updatedAt'])
+        && request.resource.data.tests is int
+        && request.resource.data.correct is int
+        && request.resource.data.answered is int
+        && request.resource.data.tests >= 0
+        && request.resource.data.tests <= 1000000
+        && request.resource.data.correct >= 0
+        && request.resource.data.correct <= request.resource.data.answered
+        && request.resource.data.answered >= 0
+        && request.resource.data.answered <= 10000000
+        && request.resource.data.updatedAt == request.time;
+    }
+    function validPaymentCreate(uid, documentId) {
+      return documentId == uid
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'reference', 'amount', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['uid', 'email', 'reference', 'amount', 'status', 'createdAt'])
+        && request.resource.data.uid == uid
+        && validEmail(request.resource.data.email)
+        && request.resource.data.reference is string
+        && request.resource.data.reference.size() >= 6
+        && request.resource.data.reference.size() <= 40
+        && request.resource.data.amount == 250
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+    }
+    function validPaymentResubmit(uid, documentId) {
+      return documentId == uid
+        && resource.data.uid == uid
+        && resource.data.status == 'rejected'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'reference', 'amount', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['uid', 'email', 'reference', 'amount', 'status', 'createdAt'])
+        && request.resource.data.uid == uid
+        && validEmail(request.resource.data.email)
+        && request.resource.data.reference is string
+        && request.resource.data.reference.size() >= 6
+        && request.resource.data.reference.size() <= 40
+        && request.resource.data.amount == 250
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+    }
+    function validPaymentReview() {
+      return resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedBy', 'reviewedAt'])
+        && request.resource.data.status in ['approved', 'rejected']
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.reviewedAt == request.time
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.reference == resource.data.reference
+        && request.resource.data.amount == resource.data.amount
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+    function validSupport(uid) {
+      return request.resource.data.keys().hasOnly(['uid', 'email', 'subject', 'message', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['uid', 'email', 'subject', 'message', 'status', 'createdAt'])
+        && request.resource.data.uid == uid
+        && validEmail(request.resource.data.email)
+        && request.resource.data.subject is string
+        && request.resource.data.subject.size() >= 1
+        && request.resource.data.subject.size() <= 100
+        && request.resource.data.message is string
+        && request.resource.data.message.size() >= 1
+        && request.resource.data.message.size() <= 2000
+        && request.resource.data.status == 'open'
+        && request.resource.data.createdAt == request.time;
+    }
+    function validSupportReopen(uid, documentId) {
+      return documentId == uid
+        && resource.data.uid == uid
+        && resource.data.status == 'answered'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'subject', 'message', 'status', 'createdAt', 'reply', 'repliedBy', 'updatedAt'])
+        && validSupport(uid);
+    }
+    function validSupportReply() {
+      return resource.data.status == 'open'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reply', 'status', 'updatedAt', 'repliedBy'])
+        && request.resource.data.reply is string
+        && request.resource.data.reply.size() >= 1
+        && request.resource.data.reply.size() <= 2000
+        && request.resource.data.status == 'answered'
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.repliedBy == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.subject == resource.data.subject
+        && request.resource.data.message == resource.data.message
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
 
+    // users/{uid}: private profile; only the owner or trusted admin can read.
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
       allow create: if isOwner(uid)
-        && request.resource.data.keys().hasOnly(['email', 'displayName', 'createdAt', 'lastLoginAt'])
-        && request.resource.data.email == request.auth.token.email
+        && validProfile(uid)
         && request.resource.data.createdAt == request.time
         && request.resource.data.lastLoginAt == request.time;
       allow update: if isOwner(uid)
+        && validProfile(uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'displayName', 'lastLoginAt'])
-        && request.resource.data.email == request.auth.token.email
         && request.resource.data.lastLoginAt == request.time;
       allow delete: if isAdmin();
 
+      // users/{uid}/progress/summary: owner-editable practice totals, not official scores.
       match /progress/{progressId} {
         allow read: if isOwner(uid) || isAdmin();
         allow create, update: if isOwner(uid)
           && progressId == 'summary'
-          && request.resource.data.keys().hasOnly(['tests', 'correct', 'answered', 'updatedAt'])
-          && request.resource.data.tests is int
-          && request.resource.data.correct is int
-          && request.resource.data.answered is int
-          && request.resource.data.tests >= 0
-          && request.resource.data.correct >= 0
-          && request.resource.data.answered >= request.resource.data.correct
-          && request.resource.data.updatedAt == request.time;
+          && validProgress();
         allow delete: if false;
       }
     }
 
+    // paymentRequests/{uid}: one request per account; only a rejected request can be retried.
+    match /paymentRequests/{requestId} {
+      allow create: if signedIn() && validPaymentCreate(request.auth.uid, requestId);
+      allow read: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow update: if isAdmin() && requestId == resource.data.uid && validPaymentReview();
+      allow update: if signedIn() && validPaymentResubmit(request.auth.uid, requestId);
+      allow delete: if false;
+    }
+
+    // supportTickets/{uid}: one open ticket per account; owner may reopen after an admin reply.
+    match /supportTickets/{ticketId} {
+      allow create: if isOwner(ticketId) && validSupport(request.auth.uid);
+      allow read: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow update: if isOwner(ticketId) && validSupportReopen(request.auth.uid, ticketId);
+      allow update: if isAdmin() && ticketId == resource.data.uid && validSupportReply();
+      allow delete: if false;
+    }
+
+    // Premium question bank: private until an active, version-matched entitlement exists.
+    match /premiumQuestionBanks/{bankId} {
+      allow read: if bankId == 'v1' && (isAdmin() || hasActivePremium());
+      allow write: if isAdmin();
+    }
+
+    // premiumAccess/{uid}: entitlement may only be written by an administrator.
     match /premiumAccess/{uid} {
       allow read: if isOwner(uid) || isAdmin();
       allow write: if isAdmin();
     }
 
+    // Deny all undeclared documents and collections.
     match /{document=**} {
       allow read, write: if false;
     }

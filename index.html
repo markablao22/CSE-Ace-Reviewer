@@ -36,7 +36,21 @@
 <div class="card"><div class="question-head"><span id="quizCategory">Mixed practice</span><span id="timer">No timer</span></div><div class="progress"><i id="progressBar"></i></div><div class="question-head"><span id="questionNumber">Question 1</span><span id="answeredCount">0 answered</span></div><div class="question" id="questionText"></div><div id="choices"></div><div id="feedback" class="feedback hidden"></div><div class="actions"><button class="btn secondary" id="prevBtn">← Previous</button><button class="btn" id="checkBtn">Check answer</button><button class="btn" id="nextBtn">Next →</button><button class="btn secondary" id="finishBtn">Finish test</button></div></div>
 <div class="card result hidden" id="resultBox"><div class="eyebrow">PRACTICE COMPLETE</div><h2>Your result</h2><div class="score" id="finalScore">0%</div><p id="resultText" class="muted"></p><div class="actions" style="justify-content:center"><button class="btn" id="retryBtn">Try another test</button><button class="btn secondary" id="homeBtn">Dashboard</button></div></div>
 </section>
-<section id="accountPage" class="hidden"><div class="card"><h2>Account & membership</h2><p class="muted" id="accountEmail">Guest account</p><h3>Free reviewer access</h3><p class="muted">You currently have access to the Free reviewer.</p><div style="margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--panel2)"><div class="eyebrow">PREMIUM MEMBERSHIP</div><h2 style="font-size:28px;margin:8px 0">₱250</h2><p class="muted">One-time membership payment via GCash</p><p><strong>GCash account name:</strong> M.J.A<br><strong>GCash number:</strong> 09957204606</p><div class="notice">GCash payment activation is still in progress. <strong>Do not send payment yet.</strong> Payment submission, transaction verification, and Premium activation will only be enabled after secure Firebase authentication, database/storage rules, and admin approval are configured.</div></div><div class="notice">A GCash screenshot or reference number alone will never automatically unlock Premium. An authorized administrator must verify the transaction independently before access is granted.</div></div></section>
+<section id="accountPage" class="hidden">
+<div class="card"><h2>Account & membership</h2><p class="muted" id="accountEmail">Guest account</p>
+<h3 id="membershipTitle">Free reviewer access</h3><p class="muted" id="membershipStatus">Free access includes 30 questions. Verified Premium unlocks all 500 questions.</p>
+<div style="margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--panel2)">
+<div class="eyebrow">PREMIUM MEMBERSHIP</div><h2 style="font-size:28px;margin:8px 0">₱250</h2>
+<p class="muted">One-time payment via GCash unlocks all 500 practice questions.</p>
+<p><strong>GCash account name:</strong> M.J.A<br><strong>GCash number:</strong> 09957204606</p>
+<form id="paymentForm"><label>GCash transaction reference</label><input class="field" id="paymentReference" maxlength="40" required placeholder="Enter the reference number"><button class="btn" id="paymentSubmit" type="submit" disabled>Request payment verification</button></form>
+<div class="toast" id="paymentMsg">Payment requests are not live yet. Do not send payment until the reviewed security rules are published and an administrator is configured.</div>
+<div id="myPayments" class="notice"></div></div></div>
+<div class="card"><h2>Customer support</h2><p class="muted">Send a question or report a problem. Sign in to receive a ticket status.</p>
+<form id="supportForm"><label>Subject</label><input class="field" id="supportSubject" maxlength="100" required><label>Message</label><textarea class="field" id="supportMessage" maxlength="2000" rows="4" required></textarea><button class="btn secondary" type="submit">Submit support request</button></form>
+<div id="myTickets" class="notice"></div></div>
+<div id="adminPanel" class="card hidden"><h2>Administrator review</h2><p class="muted">Only accounts with a trusted Firebase admin claim can review requests.</p><div id="adminPayments"></div><div id="adminTickets"></div></div>
+</section>
 </main>
 </div>
 <script type="module">
@@ -45,7 +59,7 @@ import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   signOut, onAuthStateChanged, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, where, limit, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAyoV1rkLGejnp9hLTYsY7Ooe7kgni8Z9k",
@@ -91,7 +105,7 @@ async function loadCloudStats() {
   } catch (error) { console.warn("Cloud progress unavailable; local progress remains active.", error); }
 }
 
-const BANK=[
+const BASE_BANK=[
 ["Verbal Ability","Choose the closest meaning of 'abundant'.",["Scarce","Plentiful","Tiny","Empty"],1,"Abundant means existing in large quantities; plentiful."],
 ["Verbal Ability","Which sentence is grammatically correct?",["She don't like coffee.","They was early.","He has finished his work.","We is ready."],2,"The singular subject 'he' takes 'has'."],
 ["Verbal Ability","Choose the antonym of 'reluctant'.",["Unwilling","Hesitant","Eager","Doubtful"],2,"Eager means enthusiastic or willing."],
@@ -123,6 +137,9 @@ const BANK=[
 ["General Information","What is the term of office of the Philippine President?",["3 years","4 years","5 years","6 years"],3,"The President serves a six-year term under the 1987 Constitution."],
 ["General Information","Which is a fundamental duty of a Filipino citizen?",["Disregard laws","Pay taxes as required by law","Prevent others from voting","Ignore public issues"],1,"Citizens are expected to obey laws and pay taxes as required."]
 ];
+let premiumQuestionCache=null;
+let premiumAccess=false,adminAccess=false;
+let stopMyPayments=null,stopAdminPayments=null,stopMyTickets=null,stopAdminTickets=null;
 let user=null,category=null,questions=[],answers=[],checked=[],index=0,seconds=0,tick=null,stats={tests:0,correct:0,answered:0};
 const $=id=>document.getElementById(id);
 function loadStats(){const account=firebaseAuth.currentUser;const key=account?account.uid:user;if(key){stats=JSON.parse(localStorage.getItem('cse_stats_'+key)||'{"tests":0,"correct":0,"answered":0}')}renderStats();if(account)loadCloudStats()}
@@ -161,14 +178,113 @@ $('logoutBtn').onclick=async()=>{
 };
 onAuthStateChanged(firebaseAuth,async account=>{
   if(account) {
-    try { await ensureUserProfile(account); }
-    catch(error) { console.error("Firestore profile setup failed:",error); $('authMsg').textContent="Signed in, but cloud profile setup is blocked. Check Firestore Security Rules."; }
+    try { await ensureUserProfile(account); await refreshPremiumAccess(account); }
+    catch(error) { console.error("Firebase profile/access check failed:",error); }
     enter(account.email||'Firebase user');
-  }
+  } else { premiumAccess=false; adminAccess=false; }
 });
+
+const PAYMENT_FLOW_READY=false;
+const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+async function refreshPremiumAccess(account){
+  const snap=await getDoc(doc(db,'premiumAccess',account.uid));
+  premiumAccess=snap.exists()&&snap.data().active===true&&snap.data().questionBankVersion===500;
+  const token=await account.getIdTokenResult();adminAccess=token.claims.admin===true;
+}
+function showPaymentRequests(rows){
+  $('myPayments').innerHTML='<strong>Your payment requests</strong><br>'+ (rows.length?rows.map(x=>escapeHtml(x.status)+' — ₱250').join('<br>'):'No requests submitted.');
+}
+function showTickets(rows){
+  $('myTickets').innerHTML='<strong>Your support tickets</strong><br>'+ (rows.length?rows.map(x=>escapeHtml(x.subject)+' — '+escapeHtml(x.status)+(x.reply?'<br>Reply: '+escapeHtml(x.reply):'')).join('<br><br>'):'No support tickets submitted.');
+}
+let accountListeners=[];
+function stopAccountListeners(){accountListeners.forEach(stop=>stop());accountListeners=[];}
+async function loadAccountData(){
+  stopAccountListeners();
+  const account=firebaseAuth.currentUser;
+  if(!account){$('paymentMsg').textContent='Sign in to submit a payment request or support ticket.';return;}
+  try {
+    await refreshPremiumAccess(account);
+    $('membershipTitle').textContent=premiumAccess?'Premium access active':'Free reviewer access';
+    $('membershipStatus').textContent=premiumAccess?'Premium is active. All 500 questions are unlocked.':'Free access includes 30 questions. Verified Premium unlocks all 500 questions.';
+    $('paymentSubmit').disabled=!PAYMENT_FLOW_READY||premiumAccess;
+    $('adminPanel').classList.toggle('hidden',!adminAccess);
+  } catch(e) { console.warn('Could not load membership:',e); return; }
+  accountListeners.push(onSnapshot(query(collection(db,'paymentRequests'),where('uid','==',account.uid),limit(25)),snap=>showPaymentRequests(snap.docs.map(d=>d.data())),e=>{$('myPayments').textContent='Payment request status unavailable.';}));
+  accountListeners.push(onSnapshot(query(collection(db,'supportTickets'),where('uid','==',account.uid),limit(25)),snap=>showTickets(snap.docs.map(d=>d.data())),e=>{$('myTickets').textContent='Support tickets unavailable.';}));
+  if(adminAccess){
+    accountListeners.push(onSnapshot(query(collection(db,'paymentRequests'),where('status','==','pending'),limit(50)),snap=>renderAdminPayments(snap.docs.map(d=>({id:d.id,...d.data()}))),e=>{$('adminPayments').textContent='Admin payment list unavailable.';}));
+    accountListeners.push(onSnapshot(query(collection(db,'supportTickets'),where('status','==','open'),limit(50)),snap=>renderAdminTickets(snap.docs.map(d=>({id:d.id,...d.data()}))),e=>{$('adminTickets').textContent='Admin support list unavailable.';}));
+  }
+}
+function renderAdminPayments(rows){
+  $('adminPayments').innerHTML='<h3>Pending payments</h3>'+ (rows.length?rows.map(x=>'<div class="notice"><strong>₱250 request</strong><br>Reference: '+escapeHtml(x.reference)+'<br>Email: '+escapeHtml(x.email||'Unavailable')+'<br>User ID: '+escapeHtml(x.uid)+'<div class="actions"><button class="btn" data-review-payment="'+escapeHtml(x.id)+'" data-decision="approved">Approve verified payment</button><button class="btn secondary" data-review-payment="'+escapeHtml(x.id)+'" data-decision="rejected">Reject</button></div></div>').join(''):'<p class="muted">No pending payment requests.</p>');
+}
+function renderAdminTickets(rows){
+  $('adminTickets').innerHTML='<h3>Open support tickets</h3>'+ (rows.length?rows.map(x=>'<div class="notice"><strong>'+escapeHtml(x.subject)+'</strong><br>'+escapeHtml(x.message)+'<br>Email: '+escapeHtml(x.email||'Unavailable')+'<br>User ID: '+escapeHtml(x.uid)+'<input class="field" maxlength="2000" id="reply-'+escapeHtml(x.id)+'" placeholder="Reply to customer"><button class="btn secondary" data-reply-ticket="'+escapeHtml(x.id)+'">Send reply</button></div>').join(''):'<p class="muted">No open support tickets.</p>');
+}
+$('paymentForm').onsubmit=async event=>{
+  event.preventDefault();const account=firebaseAuth.currentUser,reference=$('paymentReference').value.trim();
+  if(!account){$('paymentMsg').textContent='Sign in first.';return;}
+  if(!PAYMENT_FLOW_READY){$('paymentMsg').textContent='Payment requests are not live yet. Do not send payment.';return;}
+  if(reference.length<6){$('paymentMsg').textContent='Enter a valid GCash reference number.';return;}
+  try{const paymentRef=doc(db,'paymentRequests',account.uid),existing=await getDoc(paymentRef),requestData={email:account.email||'',reference,amount:250,status:'pending',createdAt:serverTimestamp()};if(existing.exists()){if(existing.data().status!=='rejected')throw new Error('A request is already pending or approved.');await updateDoc(paymentRef,requestData);}else{await setDoc(paymentRef,{uid:account.uid,...requestData});}$('paymentReference').value='';$('paymentMsg').textContent='Request submitted. Premium stays locked until an administrator verifies the payment.';loadAccountData();}
+  catch(e){$('paymentMsg').textContent='Could not submit request. Check your sign-in and security rules.';}
+};
+$('supportForm').onsubmit=async event=>{
+  event.preventDefault();const account=firebaseAuth.currentUser,subject=$('supportSubject').value.trim(),message=$('supportMessage').value.trim();
+  if(!account){$('myTickets').textContent='Sign in to submit a support ticket.';return;}
+  try{const ticketRef=doc(db,'supportTickets',account.uid),existing=await getDoc(ticketRef),ticket={uid:account.uid,email:account.email||'',subject,message,status:'open',createdAt:serverTimestamp()};if(existing.exists()&&existing.data().status!=='answered')throw new Error('You already have an open support ticket.');await setDoc(ticketRef,ticket);$('supportSubject').value='';$('supportMessage').value='';$('myTickets').textContent='Ticket submitted. Your status will appear here.';loadAccountData();}
+  catch(e){$('myTickets').textContent='Could not submit ticket. Check your sign-in and security rules.';}
+};
+$('adminPayments').onclick=async event=>{
+  const button=event.target.closest('[data-review-payment]');if(!button)return;
+  const account=firebaseAuth.currentUser;if(!account)return;
+  button.disabled=true;
+  try{await runTransaction(db,async tx=>{
+    const paymentRef=doc(db,'paymentRequests',button.dataset.reviewPayment),payment=await tx.get(paymentRef);
+    if(!payment.exists()||payment.data().status!=='pending')throw new Error('Request is no longer pending.');
+    tx.update(paymentRef,{status:button.dataset.decision,reviewedBy:account.uid,reviewedAt:serverTimestamp()});
+    if(button.dataset.decision==='approved')tx.set(doc(db,'premiumAccess',payment.data().uid),{active:true,questionBankVersion:500,amount:250,paymentRequestId:paymentRef.id,updatedAt:serverTimestamp()});
+  });loadAccountData();}
+  catch(e){button.disabled=false;alert('Could not review request. Verify the payment and admin access, then refresh.');}
+};
+$('adminTickets').onclick=async event=>{
+  const button=event.target.closest('[data-reply-ticket]');if(!button)return;
+  const account=firebaseAuth.currentUser,reply=$('reply-'+button.dataset.replyTicket)?.value.trim();if(!account||!reply)return;
+  button.disabled=true;
+  try{await runTransaction(db,async tx=>{const ref=doc(db,'supportTickets',button.dataset.replyTicket),ticket=await tx.get(ref);if(!ticket.exists()||ticket.data().status!=='open')throw new Error('Ticket is no longer open.');tx.update(ref,{reply,status:'answered',updatedAt:serverTimestamp(),repliedBy:account.uid});});loadAccountData();}
+  catch(e){button.disabled=false;alert('Could not send the support reply. Check admin access and refresh.');}
+};
+
 function showPage(page){['home','practice','account'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==page));document.querySelectorAll('.nav [data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page))}
-document.querySelectorAll('.nav [data-page]').forEach(b=>b.onclick=()=>showPage(b.dataset.page));$('startBtn').onclick=()=>start();document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{category=b.dataset.cat;start()});$('bankCount').textContent=BANK.length+' starter questions available across 4 categories.';
-function start(){clearInterval(tick);let pool=category?BANK.filter(q=>q[0]===category):[...BANK];questions=pool.sort(()=>Math.random()-.5).slice(0,Math.min(Number($('countSelect').value),pool.length));answers=Array(questions.length).fill(null);checked=Array(questions.length).fill(false);index=0;seconds=Number($('timeSelect').value)*60;$('resultBox').classList.add('hidden');document.querySelector('#practicePage .card').classList.remove('hidden');$('quizCategory').textContent=category||'Mixed practice';showPage('practice');renderQuestion();if(seconds){renderTimer();tick=setInterval(()=>{seconds--;renderTimer();if(seconds<=0)finish()},1000)}else $('timer').textContent='No timer'}
+document.querySelectorAll('.nav [data-page]').forEach(b=>b.onclick=()=>{showPage(b.dataset.page);if(b.dataset.page==='account')loadAccountData()});$('startBtn').onclick=()=>start();document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{category=b.dataset.cat;start()});$('bankCount').textContent='500 total questions: 30 free; Premium unlocks all 500.';
+async function start(){
+  clearInterval(tick);
+  const requested=Number($('countSelect').value);
+  if(!premiumAccess&&requested>30){alert('Free access includes 30 questions. Verified Premium unlocks all 500.');return;}
+  let accessible=BASE_BANK;
+  if(premiumAccess){
+    try{
+      if(!premiumQuestionCache){
+        const bankSnap=await getDoc(doc(db,'premiumQuestionBanks','v1'));
+        const bankData=bankSnap.exists()?bankSnap.data():null;
+        const premiumQuestions=bankData?.questions;
+        if(bankData?.questionBankVersion!==500||!Array.isArray(premiumQuestions)||premiumQuestions.length!==470)throw new Error('Premium question bank is unavailable.');
+        if(!premiumQuestions.every(q=>q&&typeof q.category==='string'&&typeof q.prompt==='string'&&Array.isArray(q.choices)&&q.choices.length===4&&Number.isInteger(q.answerIndex)&&q.answerIndex>=0&&q.answerIndex<4&&typeof q.explanation==='string'))throw new Error('Premium question bank contains an invalid item.');
+        premiumQuestionCache=premiumQuestions.map(q=>[q.category,q.prompt,q.choices,q.answerIndex,q.explanation]);
+      }
+      accessible=[...BASE_BANK,...premiumQuestionCache];
+    }catch(error){console.error('Premium question bank unavailable:',error);alert('Could not load the Premium question bank. Please contact support.');return;}
+  }
+  let pool=category?accessible.filter(q=>q[0]===category):[...accessible];
+  questions=pool.sort(()=>Math.random()-.5).slice(0,Math.min(requested,pool.length));
+  answers=Array(questions.length).fill(null);checked=Array(questions.length).fill(false);index=0;
+  seconds=Number($('timeSelect').value)*60;$('resultBox').classList.add('hidden');
+  document.querySelector('#practicePage .card').classList.remove('hidden');
+  $('quizCategory').textContent=category||'Mixed practice';showPage('practice');renderQuestion();
+  if(seconds){renderTimer();tick=setInterval(()=>{seconds--;renderTimer();if(seconds<=0)finish()},1000)}else $('timer').textContent='No timer';
+}
 function renderTimer(){$('timer').textContent=Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0')}
 function renderQuestion(){let q=questions[index];$('questionNumber').textContent='Question '+(index+1)+' of '+questions.length;$('answeredCount').textContent=answers.filter(a=>a!==null).length+' answered';$('questionText').textContent=q[1];$('progressBar').style.width=((index+1)/questions.length*100)+'%';$('choices').innerHTML='';q[2].forEach((c,i)=>{let b=document.createElement('button');b.className='choice'+(answers[index]===i?' selected':'');b.innerHTML='<span class="letter">'+String.fromCharCode(65+i)+'</span><span></span>';b.lastChild.textContent=c;b.onclick=()=>{if(checked[index])return;answers[index]=i;renderQuestion()};$('choices').appendChild(b)});$('feedback').classList.add('hidden');if(checked[index])showFeedback();$('prevBtn').disabled=index===0;$('nextBtn').disabled=index===questions.length-1;$('checkBtn').disabled=checked[index]}
 function showFeedback(){let q=questions[index],ok=answers[index]===q[3];$('feedback').className='feedback '+(ok?'correct':'wrong');$('feedback').textContent=(ok?'Correct! ':'Not quite. Correct answer: '+q[2][q[3]]+'. ')+q[4];$('feedback').classList.remove('hidden')}
