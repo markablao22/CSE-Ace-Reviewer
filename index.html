@@ -44,7 +44,7 @@
 <p class="muted">One-time payment via GCash unlocks all 500 practice questions.</p>
 <p><strong>GCash account name:</strong> M.J.A<br><strong>GCash number:</strong> 09957204606</p>
 <form id="paymentForm"><label>GCash transaction reference</label><input class="field" id="paymentReference" maxlength="40" required placeholder="Enter the reference number"><button class="btn" id="paymentSubmit" type="submit" disabled>Request payment verification</button></form>
-<div class="toast" id="paymentMsg">Payment requests are not live yet. Do not send payment until the reviewed security rules are published and an administrator is configured.</div>
+<div class="toast" id="paymentMsg">Submit your GCash reference after payment. Premium will remain locked until the administrator independently verifies the transaction.</div>
 <div id="myPayments" class="notice"></div></div></div>
 <div class="card"><h2>Customer support</h2><p class="muted">Send a question or report a problem. Sign in to receive a ticket status.</p>
 <form id="supportForm"><label>Subject</label><input class="field" id="supportSubject" maxlength="100" required><label>Message</label><textarea class="field" id="supportMessage" maxlength="2000" rows="4" required></textarea><button class="btn secondary" type="submit">Submit support request</button></form>
@@ -184,7 +184,7 @@ onAuthStateChanged(firebaseAuth,async account=>{
   } else { premiumAccess=false; adminAccess=false; }
 });
 
-const PAYMENT_FLOW_READY=false;
+const PAYMENT_FLOW_READY=true;
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 async function refreshPremiumAccess(account){
   const snap=await getDoc(doc(db,'premiumAccess',account.uid));
