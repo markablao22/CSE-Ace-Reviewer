@@ -60,8 +60,6 @@ import {
   signOut, onAuthStateChanged, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, query, where, limit, addDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { EXTRA_BANK } from "./question-bank.js";
-import { SUPPLEMENTAL_BANK } from "./question-bank-supplement.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAyoV1rkLGejnp9hLTYsY7Ooe7kgni8Z9k",
@@ -139,7 +137,7 @@ const BASE_BANK=[
 ["General Information","What is the term of office of the Philippine President?",["3 years","4 years","5 years","6 years"],3,"The President serves a six-year term under the 1987 Constitution."],
 ["General Information","Which is a fundamental duty of a Filipino citizen?",["Disregard laws","Pay taxes as required by law","Prevent others from voting","Ignore public issues"],1,"Citizens are expected to obey laws and pay taxes as required."]
 ];
-const BANK=[...BASE_BANK,...EXTRA_BANK,...SUPPLEMENTAL_BANK];
+const BANK=BASE_BANK;
 let premiumAccess=false,adminAccess=false;
 let stopMyPayments=null,stopAdminPayments=null,stopMyTickets=null,stopAdminTickets=null;
 let user=null,category=null,questions=[],answers=[],checked=[],index=0,seconds=0,tick=null,stats={tests:0,correct:0,answered:0};
@@ -201,7 +199,7 @@ function showTickets(rows){
 }
 let accountListeners=[];
 function stopAccountListeners(){accountListeners.forEach(stop=>stop());accountListeners=[];}
-async function loadAccountData(){
+async async function loadAccountData(){
   stopAccountListeners();
   const account=firebaseAuth.currentUser;
   if(!account){$('paymentMsg').textContent='Sign in to submit a payment request or support ticket.';return;}
@@ -220,7 +218,7 @@ async function loadAccountData(){
   }
 }
 function renderAdminPayments(rows){
-  $('adminPayments').innerHTML='<h3>Pending payments</h3>'+ (rows.length?rows.map(x=>'<div class="notice"><strong>₱250 request</strong><br>Reference: '+escapeHtml(x.reference)+'<br>User: '+escapeHtml(x.uid)+'<div class="actions"><button class="btn" data-review-payment="'+escapeHtml(x.id)+'" data-decision="approved">Approve verified payment</button><button class="btn secondary" data-review-payment="'+escapeHtml(x.id)+'" data-decision="rejected">Reject</button></div></div>').join(''):'<p class="muted">No pending payment requests.</p>');
+  $('adminPayments').innerHTML='<h3>Pending payments</h3>'+ (rows.length?rows.map(x=>'<div class="notice"><strong>₱250 request</strong><br>Reference: '+escapeHtml(x.reference)+'<br>Email: '+escapeHtml(x.email||'Unavailable')+'<br>User ID: '+escapeHtml(x.uid)+'<div class="actions"><button class="btn" data-review-payment="'+escapeHtml(x.id)+'" data-decision="approved">Approve verified payment</button><button class="btn secondary" data-review-payment="'+escapeHtml(x.id)+'" data-decision="rejected">Reject</button></div></div>').join(''):'<p class="muted">No pending payment requests.</p>');
 }
 function renderAdminTickets(rows){
   $('adminTickets').innerHTML='<h3>Open support tickets</h3>'+ (rows.length?rows.map(x=>'<div class="notice"><strong>'+escapeHtml(x.subject)+'</strong><br>'+escapeHtml(x.message)+'<br>User: '+escapeHtml(x.uid)+'<input class="field" maxlength="2000" id="reply-'+escapeHtml(x.id)+'" placeholder="Reply to customer"><button class="btn secondary" data-reply-ticket="'+escapeHtml(x.id)+'">Send reply</button></div>').join(''):'<p class="muted">No open support tickets.</p>');
@@ -230,7 +228,7 @@ $('paymentForm').onsubmit=async event=>{
   if(!account){$('paymentMsg').textContent='Sign in first.';return;}
   if(!PAYMENT_FLOW_READY){$('paymentMsg').textContent='Payment requests are not live yet. Do not send payment.';return;}
   if(reference.length<6){$('paymentMsg').textContent='Enter a valid GCash reference number.';return;}
-  try{await addDoc(collection(db,'paymentRequests'),{uid:account.uid,reference,amount:250,status:'pending',createdAt:serverTimestamp()});$('paymentReference').value='';$('paymentMsg').textContent='Request submitted. Premium stays locked until an administrator verifies the payment.';loadAccountData();}
+  try{await addDoc(collection(db,'paymentRequests'),{uid:account.uid,email:account.email||'',reference,amount:250,status:'pending',createdAt:serverTimestamp()});$('paymentReference').value='';$('paymentMsg').textContent='Request submitted. Premium stays locked until an administrator verifies the payment.';loadAccountData();}
   catch(e){$('paymentMsg').textContent='Could not submit request. Check your sign-in and security rules.';}
 };
 $('supportForm').onsubmit=async event=>{
@@ -261,7 +259,27 @@ $('adminTickets').onclick=async event=>{
 
 function showPage(page){['home','practice','account'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==page));document.querySelectorAll('.nav [data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page))}
 document.querySelectorAll('.nav [data-page]').forEach(b=>b.onclick=()=>{showPage(b.dataset.page);if(b.dataset.page==='account')loadAccountData()});$('startBtn').onclick=()=>start();document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{category=b.dataset.cat;start()});$('bankCount').textContent='500 total questions: 30 free; Premium unlocks all 500.';
-function start(){clearInterval(tick);const accessible=premiumAccess?BANK:BASE_BANK;let pool=category?accessible.filter(q=>q[0]===category):[...accessible];const requested=Number($('countSelect').value);if(!premiumAccess&&requested>30)alert('Free access includes 30 questions. Premium unlocks all 500 after payment verification.');questions=pool.sort(()=>Math.random()-.5).slice(0,Math.min(requested,pool.length));answers=Array(questions.length).fill(null);checked=Array(questions.length).fill(false);index=0;seconds=Number($('timeSelect').value)*60;$('resultBox').classList.add('hidden');document.querySelector('#practicePage .card').classList.remove('hidden');$('quizCategory').textContent=category||'Mixed practice';showPage('practice');renderQuestion();if(seconds){renderTimer();tick=setInterval(()=>{seconds--;renderTimer();if(seconds<=0)finish()},1000)}else $('timer').textContent='No timer'}
+async function start(){
+  clearInterval(tick);
+  const requested=Number($('countSelect').value);
+  if(!premiumAccess&&requested>30){alert('Free access includes 30 questions. Verified Premium unlocks all 500.');return;}
+  let accessible=BASE_BANK;
+  if(premiumAccess){
+    try{
+      const bankSnap=await getDoc(doc(db,'premiumQuestionBanks','v1'));
+      const premiumQuestions=bankSnap.exists()?bankSnap.data().questions:null;
+      if(!Array.isArray(premiumQuestions)||premiumQuestions.length!==470)throw new Error('Premium question bank is unavailable.');
+      accessible=[...BASE_BANK,...premiumQuestions];
+    }catch(error){console.error('Premium question bank unavailable:',error);alert('Could not load the Premium question bank. Please contact support.');return;}
+  }
+  let pool=category?accessible.filter(q=>q[0]===category):[...accessible];
+  questions=pool.sort(()=>Math.random()-.5).slice(0,Math.min(requested,pool.length));
+  answers=Array(questions.length).fill(null);checked=Array(questions.length).fill(false);index=0;
+  seconds=Number($('timeSelect').value)*60;$('resultBox').classList.add('hidden');
+  document.querySelector('#practicePage .card').classList.remove('hidden');
+  $('quizCategory').textContent=category||'Mixed practice';showPage('practice');renderQuestion();
+  if(seconds){renderTimer();tick=setInterval(()=>{seconds--;renderTimer();if(seconds<=0)finish()},1000)}else $('timer').textContent='No timer';
+}
 function renderTimer(){$('timer').textContent=Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0')}
 function renderQuestion(){let q=questions[index];$('questionNumber').textContent='Question '+(index+1)+' of '+questions.length;$('answeredCount').textContent=answers.filter(a=>a!==null).length+' answered';$('questionText').textContent=q[1];$('progressBar').style.width=((index+1)/questions.length*100)+'%';$('choices').innerHTML='';q[2].forEach((c,i)=>{let b=document.createElement('button');b.className='choice'+(answers[index]===i?' selected':'');b.innerHTML='<span class="letter">'+String.fromCharCode(65+i)+'</span><span></span>';b.lastChild.textContent=c;b.onclick=()=>{if(checked[index])return;answers[index]=i;renderQuestion()};$('choices').appendChild(b)});$('feedback').classList.add('hidden');if(checked[index])showFeedback();$('prevBtn').disabled=index===0;$('nextBtn').disabled=index===questions.length-1;$('checkBtn').disabled=checked[index]}
 function showFeedback(){let q=questions[index],ok=answers[index]===q[3];$('feedback').className='feedback '+(ok?'correct':'wrong');$('feedback').textContent=(ok?'Correct! ':'Not quite. Correct answer: '+q[2][q[3]]+'. ')+q[4];$('feedback').classList.remove('hidden')}
