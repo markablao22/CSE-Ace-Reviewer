@@ -53,7 +53,7 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time;
     }
     function validPaymentResubmit(uid, documentId) {
-      return requestId == uid
+      return documentId == uid
         && resource.data.uid == uid
         && resource.data.status == 'rejected'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'reference', 'amount', 'status', 'createdAt'])
