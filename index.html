@@ -14,11 +14,11 @@
 <div class="shell">
 <header class="top"><div class="brand"><div class="logo">A</div><div>CSE ACE <small>CIVIL SERVICE EXAM REVIEWER</small></div></div><div class="user" id="userLabel">Practice mode</div></header>
 <section id="authView" class="card auth">
-<div class="eyebrow">WELCOME TO YOUR REVIEW HUB</div><h1>Ready to ace the exam?</h1><p class="muted">Sign in to save your practice progress on this device.</p>
+<div class="eyebrow">WELCOME TO YOUR REVIEW HUB</div><h1>Ready to ace the exam?</h1><p class="muted">Sign in or create an account with Firebase. Your account will be available across supported devices.</p>
 <label>Email</label><input class="field" id="email" type="email" placeholder="you@example.com">
 <label>Password</label><input class="field" id="password" type="password" placeholder="At least 6 characters">
 <div class="actions"><button class="btn" id="loginBtn">Sign in</button><button class="btn secondary" id="registerBtn">Create account</button><button class="btn secondary" id="guestBtn">Continue as guest</button></div><div class="toast" id="authMsg"></div>
-<div class="notice">Prototype account storage uses this browser only. For secure accounts synced across devices, Firebase Authentication and database rules must be configured before public launch. Do not reuse an important password here.</div>
+<div class="notice">Accounts use Firebase Authentication. Practice statistics remain stored locally on this device for now; cloud progress sync will be added after database rules are configured.</div>
 </section>
 <main id="appView" class="hidden">
 <div class="nav"><button class="active" data-page="home">Dashboard</button><button data-page="practice">Practice test</button><button data-page="account">Account & plans</button><button id="logoutBtn">Sign out</button></div>
@@ -39,7 +39,25 @@
 <section id="accountPage" class="hidden"><div class="card"><h2>Account & membership</h2><p class="muted" id="accountEmail">Guest account</p><h3>Free reviewer access</h3><p class="muted">You currently have access to the Free reviewer.</p><div style="margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--panel2)"><div class="eyebrow">PREMIUM MEMBERSHIP</div><h2 style="font-size:28px;margin:8px 0">₱250</h2><p class="muted">One-time membership payment via GCash</p><p><strong>GCash account name:</strong> M.J.A<br><strong>GCash number:</strong> 09957204606</p><div class="notice">GCash payment activation is still in progress. <strong>Do not send payment yet.</strong> Payment submission, transaction verification, and Premium activation will only be enabled after secure Firebase authentication, database/storage rules, and admin approval are configured.</div></div><div class="notice">A GCash screenshot or reference number alone will never automatically unlock Premium. An authorized administrator must verify the transaction independently before access is granted.</div></div></section>
 </main>
 </div>
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  signOut, onAuthStateChanged, setPersistence, browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAyoV1rkLGejnp9hLTYsY7Ooe7kgni8Z9k",
+  authDomain: "cse-ace-reviewer.firebaseapp.com",
+  projectId: "cse-ace-reviewer",
+  storageBucket: "cse-ace-reviewer.firebasestorage.app",
+  messagingSenderId: "370363112153",
+  appId: "1:370363112153:web:334842f9652069f9673cc8"
+};
+const firebaseApp = initializeApp(firebaseConfig);
+const firebaseAuth = getAuth(firebaseApp);
+setPersistence(firebaseAuth, browserLocalPersistence).catch(error => console.error("Auth persistence:", error));
+
 const BANK=[
 ["Verbal Ability","Choose the closest meaning of 'abundant'.",["Scarce","Plentiful","Tiny","Empty"],1,"Abundant means existing in large quantities; plentiful."],
 ["Verbal Ability","Which sentence is grammatically correct?",["She don't like coffee.","They was early.","He has finished his work.","We is ready."],2,"The singular subject 'he' takes 'has'."],
@@ -78,8 +96,39 @@ function loadStats(){if(user){stats=JSON.parse(localStorage.getItem('cse_stats_'
 function saveStats(){if(user)localStorage.setItem('cse_stats_'+user,JSON.stringify(stats));renderStats()}
 function renderStats(){$('statTests').textContent=stats.tests;$('statCorrect').textContent=stats.correct;$('statStreak').textContent=stats.answered;$('statAccuracy').textContent=(stats.answered?Math.round(stats.correct/stats.answered*100):0)+'%'}
 function enter(name){user=name;$('authView').classList.add('hidden');$('appView').classList.remove('hidden');$('userLabel').textContent=name;$('accountEmail').textContent=name;loadStats();showPage('home')}
-function auth(mode){let e=$('email').value.trim().toLowerCase(),p=$('password').value;if(!e||p.length<6){$('authMsg').textContent='Enter a valid email and a password with at least 6 characters.';return}let db=JSON.parse(localStorage.getItem('cse_users')||'{}');if(mode==='register'){if(db[e]){$('authMsg').textContent='Account already exists. Please sign in.';return}db[e]=p;localStorage.setItem('cse_users',JSON.stringify(db));$('authMsg').textContent='Account created on this device.'}else if(db[e]!==p){$('authMsg').textContent='Incorrect email or password, or account does not exist.';return}enter(e)}
-$('loginBtn').onclick=()=>auth('login');$('registerBtn').onclick=()=>auth('register');$('guestBtn').onclick=()=>enter('Guest');$('logoutBtn').onclick=()=>{user=null;$('appView').classList.add('hidden');$('authView').classList.remove('hidden');$('userLabel').textContent='Practice mode'};
+async function auth(mode){
+  const e=$('email').value.trim().toLowerCase(),p=$('password').value;
+  if(!e||p.length<6){$('authMsg').textContent='Enter a valid email and a password with at least 6 characters.';return}
+  $('authMsg').textContent='Connecting securely...';
+  $('loginBtn').disabled=true;$('registerBtn').disabled=true;
+  try{
+    if(mode==='register') await createUserWithEmailAndPassword(firebaseAuth,e,p);
+    else await signInWithEmailAndPassword(firebaseAuth,e,p);
+    $('authMsg').textContent='';
+  }catch(error){
+    const messages={
+      'auth/email-already-in-use':'This email already has an account. Please sign in.',
+      'auth/invalid-email':'Please enter a valid email address.',
+      'auth/weak-password':'Use a stronger password with at least 6 characters.',
+      'auth/invalid-credential':'Incorrect email or password.',
+      'auth/user-not-found':'No account found. Please create an account first.',
+      'auth/wrong-password':'Incorrect email or password.',
+      'auth/too-many-requests':'Too many attempts. Please wait and try again.',
+      'auth/network-request-failed':'Network error. Check your internet connection.'
+    };
+    $('authMsg').textContent=messages[error.code]||('Authentication failed: '+error.message);
+  }finally{$('loginBtn').disabled=false;$('registerBtn').disabled=false}
+}
+$('loginBtn').onclick=()=>auth('login');
+$('registerBtn').onclick=()=>auth('register');
+$('guestBtn').onclick=()=>enter('Guest');
+$('logoutBtn').onclick=async()=>{
+  try{await signOut(firebaseAuth)}catch(error){console.error(error)}
+  user=null;$('appView').classList.add('hidden');$('authView').classList.remove('hidden');$('userLabel').textContent='Practice mode';
+};
+onAuthStateChanged(firebaseAuth,account=>{
+  if(account) enter(account.email||'Firebase user');
+});
 function showPage(page){['home','practice','account'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==page));document.querySelectorAll('.nav [data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page))}
 document.querySelectorAll('.nav [data-page]').forEach(b=>b.onclick=()=>showPage(b.dataset.page));$('startBtn').onclick=()=>start();document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{category=b.dataset.cat;start()});$('bankCount').textContent=BANK.length+' starter questions available across 4 categories.';
 function start(){clearInterval(tick);let pool=category?BANK.filter(q=>q[0]===category):[...BANK];questions=pool.sort(()=>Math.random()-.5).slice(0,Math.min(Number($('countSelect').value),pool.length));answers=Array(questions.length).fill(null);checked=Array(questions.length).fill(false);index=0;seconds=Number($('timeSelect').value)*60;$('resultBox').classList.add('hidden');document.querySelector('#practicePage .card').classList.remove('hidden');$('quizCategory').textContent=category||'Mixed practice';showPage('practice');renderQuestion();if(seconds){renderTimer();tick=setInterval(()=>{seconds--;renderTimer();if(seconds<=0)finish()},1000)}else $('timer').textContent='No timer'}
