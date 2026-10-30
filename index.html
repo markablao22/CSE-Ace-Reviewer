@@ -271,8 +271,8 @@ async function start(){
         const bankData=bankSnap.exists()?bankSnap.data():null;
         const premiumQuestions=bankData?.questions;
         if(bankData?.questionBankVersion!==500||!Array.isArray(premiumQuestions)||premiumQuestions.length!==470)throw new Error('Premium question bank is unavailable.');
-        if(!premiumQuestions.every(q=>Array.isArray(q)&&q.length===5&&typeof q[0]==='string'&&typeof q[1]==='string'&&Array.isArray(q[2])&&q[2].length===4&&Number.isInteger(q[3])&&q[3]>=0&&q[3]<4&&typeof q[4]==='string'))throw new Error('Premium question bank contains an invalid item.');
-        premiumQuestionCache=premiumQuestions;
+        if(!premiumQuestions.every(q=>q&&typeof q.category==='string'&&typeof q.prompt==='string'&&Array.isArray(q.choices)&&q.choices.length===4&&Number.isInteger(q.answerIndex)&&q.answerIndex>=0&&q.answerIndex<4&&typeof q.explanation==='string'))throw new Error('Premium question bank contains an invalid item.');
+        premiumQuestionCache=premiumQuestions.map(q=>[q.category,q.prompt,q.choices,q.answerIndex,q.explanation]);
       }
       accessible=[...BASE_BANK,...premiumQuestionCache];
     }catch(error){console.error('Premium question bank unavailable:',error);alert('Could not load the Premium question bank. Please contact support.');return;}
