@@ -201,16 +201,17 @@ function showTickets(rows){
 }
 let accountListeners=[];
 function stopAccountListeners(){accountListeners.forEach(stop=>stop());accountListeners=[];}
-function loadAccountData(){
+async function loadAccountData(){
   stopAccountListeners();
   const account=firebaseAuth.currentUser;
   if(!account){$('paymentMsg').textContent='Sign in to submit a payment request or support ticket.';return;}
-  refreshPremiumAccess(account).then(()=>{
+  try {
+    await refreshPremiumAccess(account);
     $('membershipTitle').textContent=premiumAccess?'Premium access active':'Free reviewer access';
     $('membershipStatus').textContent=premiumAccess?'Premium is active. All 500 questions are unlocked.':'Free access includes 30 questions. Verified Premium unlocks all 500 questions.';
     $('paymentSubmit').disabled=!PAYMENT_FLOW_READY||premiumAccess;
     $('adminPanel').classList.toggle('hidden',!adminAccess);
-  }).catch(e=>console.warn('Could not load membership:',e));
+  } catch(e) { console.warn('Could not load membership:',e); return; }
   accountListeners.push(onSnapshot(query(collection(db,'paymentRequests'),where('uid','==',account.uid),limit(25)),snap=>showPaymentRequests(snap.docs.map(d=>d.data())),e=>{$('myPayments').textContent='Payment request status unavailable.';}));
   accountListeners.push(onSnapshot(query(collection(db,'supportTickets'),where('uid','==',account.uid),limit(25)),snap=>showTickets(snap.docs.map(d=>d.data())),e=>{$('myTickets').textContent='Support tickets unavailable.';}));
   if(adminAccess){
