@@ -45,6 +45,7 @@ import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   signOut, onAuthStateChanged, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAyoV1rkLGejnp9hLTYsY7Ooe7kgni8Z9k",
@@ -56,7 +57,39 @@ const firebaseConfig = {
 };
 const firebaseApp = initializeApp(firebaseConfig);
 const firebaseAuth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
 setPersistence(firebaseAuth, browserLocalPersistence).catch(error => console.error("Auth persistence:", error));
+
+async function ensureUserProfile(account) {
+  const profileRef = doc(db, "users", account.uid);
+  const profile = await getDoc(profileRef);
+  if (profile.exists()) {
+    await setDoc(profileRef, { email: account.email || "", displayName: account.displayName || "", lastLoginAt: serverTimestamp() }, { merge: true });
+  } else {
+    await setDoc(profileRef, { email: account.email || "", displayName: account.displayName || "", createdAt: serverTimestamp(), lastLoginAt: serverTimestamp() });
+  }
+}
+async function syncStatsToCloud() {
+  const account = firebaseAuth.currentUser;
+  if (!account) return;
+  await setDoc(doc(db, "users", account.uid, "progress", "summary"), {
+    tests: Number(stats.tests) || 0, correct: Number(stats.correct) || 0,
+    answered: Number(stats.answered) || 0, updatedAt: serverTimestamp()
+  });
+}
+async function loadCloudStats() {
+  const account = firebaseAuth.currentUser;
+  if (!account) return;
+  try {
+    const snapshot = await getDoc(doc(db, "users", account.uid, "progress", "summary"));
+    if (snapshot.exists()) {
+      const cloud = snapshot.data();
+      stats = { tests: Math.max(stats.tests, Number(cloud.tests) || 0), correct: Math.max(stats.correct, Number(cloud.correct) || 0), answered: Math.max(stats.answered, Number(cloud.answered) || 0) };
+      localStorage.setItem('cse_stats_'+account.uid, JSON.stringify(stats));
+      renderStats();
+    } else await syncStatsToCloud();
+  } catch (error) { console.warn("Cloud progress unavailable; local progress remains active.", error); }
+}
 
 const BANK=[
 ["Verbal Ability","Choose the closest meaning of 'abundant'.",["Scarce","Plentiful","Tiny","Empty"],1,"Abundant means existing in large quantities; plentiful."],
@@ -92,8 +125,8 @@ const BANK=[
 ];
 let user=null,category=null,questions=[],answers=[],checked=[],index=0,seconds=0,tick=null,stats={tests:0,correct:0,answered:0};
 const $=id=>document.getElementById(id);
-function loadStats(){if(user){stats=JSON.parse(localStorage.getItem('cse_stats_'+user)||'{"tests":0,"correct":0,"answered":0}')}renderStats()}
-function saveStats(){if(user)localStorage.setItem('cse_stats_'+user,JSON.stringify(stats));renderStats()}
+function loadStats(){const account=firebaseAuth.currentUser;const key=account?account.uid:user;if(key){stats=JSON.parse(localStorage.getItem('cse_stats_'+key)||'{"tests":0,"correct":0,"answered":0}')}renderStats();if(account)loadCloudStats()}
+function saveStats(){const account=firebaseAuth.currentUser;const key=account?account.uid:user;if(key)localStorage.setItem('cse_stats_'+key,JSON.stringify(stats));renderStats();if(account)syncStatsToCloud().catch(error=>console.warn("Could not sync progress to Firestore:",error))}
 function renderStats(){$('statTests').textContent=stats.tests;$('statCorrect').textContent=stats.correct;$('statStreak').textContent=stats.answered;$('statAccuracy').textContent=(stats.answered?Math.round(stats.correct/stats.answered*100):0)+'%'}
 function enter(name){user=name;$('authView').classList.add('hidden');$('appView').classList.remove('hidden');$('userLabel').textContent=name;$('accountEmail').textContent=name;loadStats();showPage('home')}
 async function auth(mode){
@@ -126,8 +159,12 @@ $('logoutBtn').onclick=async()=>{
   try{await signOut(firebaseAuth)}catch(error){console.error(error)}
   user=null;$('appView').classList.add('hidden');$('authView').classList.remove('hidden');$('userLabel').textContent='Practice mode';
 };
-onAuthStateChanged(firebaseAuth,account=>{
-  if(account) enter(account.email||'Firebase user');
+onAuthStateChanged(firebaseAuth,async account=>{
+  if(account) {
+    try { await ensureUserProfile(account); }
+    catch(error) { console.error("Firestore profile setup failed:",error); $('authMsg').textContent="Signed in, but cloud profile setup is blocked. Check Firestore Security Rules."; }
+    enter(account.email||'Firebase user');
+  }
 });
 function showPage(page){['home','practice','account'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==page));document.querySelectorAll('.nav [data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page))}
 document.querySelectorAll('.nav [data-page]').forEach(b=>b.onclick=()=>showPage(b.dataset.page));$('startBtn').onclick=()=>start();document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{category=b.dataset.cat;start()});$('bankCount').textContent=BANK.length+' starter questions available across 4 categories.';
