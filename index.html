@@ -21,7 +21,7 @@
 <div class="notice">Accounts use Firebase Authentication. Practice statistics remain stored locally on this device for now; cloud progress sync will be added after database rules are configured.</div>
 </section>
 <main id="appView" class="hidden">
-<div class="nav"><button class="active" data-page="home">Dashboard</button><button data-page="practice">Practice test</button><button data-page="account">Account & plans</button><button id="logoutBtn">Sign out</button></div>
+<div class="nav"><button class="active" data-page="home">Dashboard</button><button data-page="practice">Practice test</button><button data-page="account">Account & plans</button><button id="adminNavBtn" class="hidden" data-page="admin">Admin Dashboard</button><button id="logoutBtn">Sign out</button></div>
 <section id="homePage">
 <div class="hero"><div class="eyebrow">YOUR NEXT STEP STARTS HERE</div><h1>Study smarter.<br>Serve with confidence.</h1><p>Build your confidence for the Philippine Civil Service Examination with focused practice, clear explanations, and progress tracking.</p><div class="actions"><button class="btn" id="startBtn">Start practicing →</button></div></div>
 <div class="grid"><div class="stat"><strong id="statTests">0</strong><span>Tests completed</span></div><div class="stat"><strong id="statCorrect">0</strong><span>Correct answers</span></div><div class="stat"><strong id="statAccuracy">0%</strong><span>Accuracy</span></div><div class="stat"><strong id="statStreak">0</strong><span>Questions answered</span></div></div>
@@ -189,7 +189,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','
 async function refreshPremiumAccess(account){
   const snap=await getDoc(doc(db,'premiumAccess',account.uid));
   premiumAccess=snap.exists()&&snap.data().active===true&&snap.data().questionBankVersion===500;
-  const token=await account.getIdTokenResult();adminAccess=token.claims.admin===true;
+  const token=await account.getIdTokenResult();adminAccess=token.claims.admin===true;$("adminNavBtn").classList.toggle("hidden",!adminAccess);
 }
 function showPaymentRequests(rows){
   $('myPayments').innerHTML='<strong>Your payment requests</strong><br>'+ (rows.length?rows.map(x=>escapeHtml(x.status)+' — ₱250').join('<br>'):'No requests submitted.');
@@ -257,8 +257,8 @@ $('adminTickets').onclick=async event=>{
   catch(e){button.disabled=false;alert('Could not send the support reply. Check admin access and refresh.');}
 };
 
-function showPage(page){['home','practice','account'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==page));document.querySelectorAll('.nav [data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page))}
-document.querySelectorAll('.nav [data-page]').forEach(b=>b.onclick=()=>{showPage(b.dataset.page);if(b.dataset.page==='account')loadAccountData()});$('startBtn').onclick=()=>start();document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{category=b.dataset.cat;start()});$('bankCount').textContent='500 total questions: 30 free; Premium unlocks all 500.';
+function showPage(page){const section=page==='admin'?'account':page;['home','practice','account'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==section));document.querySelectorAll('.nav [data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page))}
+document.querySelectorAll('.nav [data-page]').forEach(b=>b.onclick=async()=>{const page=b.dataset.page;showPage(page);if(page==='account'||page==='admin')await loadAccountData();if(page==='admin')$('adminPanel').scrollIntoView({behavior:'smooth',block:'start'})});$('startBtn').onclick=()=>start();document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{category=b.dataset.cat;start()});$('bankCount').textContent='500 total questions: 30 free; Premium unlocks all 500.';
 async function start(){
   clearInterval(tick);
   const requested=Number($('countSelect').value);
