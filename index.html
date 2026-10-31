@@ -31,6 +31,33 @@ button{font:inherit;transition:transform .18s ease,box-shadow .2s ease,border-co
 @media(max-width:700px){.hero:after{opacity:.55}.card:hover,.stat:hover{transform:translateY(-2px)}.category:hover{transform:translateY(-2px)}.nav{gap:4px}.nav button{padding:8px 10px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
+<style id="ad-motion">
+#homePage .hero{border-color:#4a718e;background:radial-gradient(ellipse at 82% 46%,#1d718044,transparent 40%),linear-gradient(120deg,#1d355c 0%,#152845 55%,#124353 100%);box-shadow:0 28px 70px #02081780,0 0 0 1px #51d6d015,inset 0 1px 0 #ffffff1c;transform-style:preserve-3d}
+#homePage .hero:before{z-index:0;pointer-events:none;inset:-45% -10%;width:auto;height:auto;border-radius:0;background:linear-gradient(112deg,transparent 33%,#58e3da12 49%,transparent 64%);filter:none;animation:ad-sweep 8s ease-in-out infinite}
+#homePage .hero:after{pointer-events:none;right:-52px;top:-95px;width:310px;height:310px;opacity:.86;background:radial-gradient(circle at 35% 32%,#b5fff266 0 3%,#61ded744 18%,#4b85ca23 48%,transparent 70%);box-shadow:inset -22px -24px 48px #08182c66,0 0 65px #51d6d022;animation:ad-orbit 11s ease-in-out infinite alternate}
+#homePage .hero .eyebrow{position:relative;z-index:1;display:inline-flex;align-items:center;gap:9px;padding:8px 12px;border:1px solid #51d6d047;border-radius:999px;background:#0b1a2f83;box-shadow:inset 0 1px 0 #ffffff12;letter-spacing:1.5px}
+#homePage .hero .eyebrow:before{content:"";width:8px;height:8px;border-radius:50%;background:#62eee0;box-shadow:0 0 0 4px #51d6d020,0 0 14px #51d6d0;animation:ad-dot 1.8s ease-in-out infinite}
+#homePage .hero .eyebrow:after{content:"CSE EXAM PREP";padding-left:9px;border-left:1px solid #51d6d03c;color:#d5e8ff;font-size:10px;letter-spacing:1.1px}
+#homePage .hero h1{position:relative;z-index:1;max-width:800px;background:linear-gradient(100deg,#f5f8ff 5%,#d8f6f2 60%,#a8e6ff 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 10px 35px #0000001a}
+#homePage .hero p{position:relative;z-index:1;max-width:650px;font-size:16px;color:#c6d4e9}
+#homePage .hero .actions{position:relative;z-index:1;margin-top:23px}
+#startBtn{position:relative;isolation:isolate;min-height:52px;padding:13px 21px;border-radius:15px;background:linear-gradient(115deg,#57e1d6,#8ce8d4 52%,#9bdff5);box-shadow:0 10px 28px #51d6d044,inset 0 1px 0 #ffffffc7;animation:ad-cta-pulse 2.8s ease-in-out infinite}
+#startBtn:before{content:"";position:absolute;z-index:-1;inset:-2px;border:1px solid #9efff077;border-radius:inherit;opacity:0;animation:ad-cta-ring 2.8s ease-out infinite}
+#startBtn:after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(110deg,transparent 28%,#ffffff6b 50%,transparent 68%);transform:translateX(-130%);animation:ad-button-shine 3.6s ease-in-out infinite}
+#startBtn:hover:not(:disabled){animation:none;transform:translateY(-3px) scale(1.025);box-shadow:0 15px 34px #51d6d066,inset 0 1px 0 #ffffffd9}
+#homePage .grid .stat{position:relative;overflow:hidden;background:linear-gradient(145deg,#1a2d4a,#101c32);box-shadow:0 13px 28px #02081744,inset 0 1px 0 #ffffff0c}
+#homePage .grid .stat:after{content:"";position:absolute;left:18px;right:18px;top:0;height:2px;border-radius:4px;background:linear-gradient(90deg,transparent,#51d6d0aa,transparent);opacity:.55}
+#homePage .grid .stat strong{background:linear-gradient(100deg,#f1f6ff,#8ee7df);-webkit-background-clip:text;background-clip:text;color:transparent}
+#homePage .categories .category{animation:ad-float-in .55s cubic-bezier(.2,.75,.25,1) both}#homePage .categories .category:nth-child(2){animation-delay:70ms}#homePage .categories .category:nth-child(3){animation-delay:140ms}#homePage .categories .category:nth-child(4){animation-delay:210ms}
+#homePage .category:hover{transform:translateY(-6px) rotateX(2deg) scale(1.012);box-shadow:0 18px 30px #02081766,0 0 0 1px #51d6d022,inset 0 1px 0 #ffffff16}
+.nav button.active{position:relative;background:linear-gradient(120deg,#2e4e78,#23415d);box-shadow:0 7px 18px #02081766,inset 0 1px 0 #ffffff20}
+.nav button.active:after{content:"";position:absolute;left:15px;right:15px;bottom:3px;height:2px;border-radius:4px;background:linear-gradient(90deg,transparent,#74e8dd,transparent)}
+.btn{position:relative;overflow:hidden}.btn:focus-visible{outline-offset:4px}.choice:hover:not(:disabled){transform:translateX(5px) scale(1.006)}
+#practicePage:not(.hidden)>.card,#accountPage:not(.hidden)>.card,#adminPage:not(.hidden)>.card{animation:ad-page-in .55s cubic-bezier(.2,.75,.25,1) both}
+@keyframes ad-sweep{0%,22%{transform:translateX(-34%)}70%,100%{transform:translateX(34%)}}@keyframes ad-orbit{from{transform:translate3d(-8px,0,0) rotate(-5deg) scale(.96)}to{transform:translate3d(8px,12px,0) rotate(7deg) scale(1.05)}}@keyframes ad-dot{50%{box-shadow:0 0 0 7px #51d6d00d,0 0 21px #51d6d0}}@keyframes ad-cta-pulse{0%,100%{box-shadow:0 10px 25px #51d6d035,inset 0 1px 0 #ffffffc7}50%{box-shadow:0 12px 34px #51d6d064,inset 0 1px 0 #ffffffd9}}@keyframes ad-cta-ring{0%{transform:scale(1);opacity:.65}100%{transform:scale(1.14,1.28);opacity:0}}@keyframes ad-button-shine{0%,25%{transform:translateX(-130%)}58%,100%{transform:translateX(130%)}}@keyframes ad-float-in{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes ad-page-in{from{opacity:0;transform:translateY(15px) scale(.995)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:600px){#homePage .hero .eyebrow:after{content:"EXAM PREP";font-size:9px}#homePage .hero:after{right:-120px;opacity:.5}#homePage .hero p{font-size:15px}#startBtn{width:100%}}
+@media(prefers-reduced-motion:reduce){#homePage .hero:before,#homePage .hero:after,#homePage .hero .eyebrow:before,#startBtn,#startBtn:before,#startBtn:after,#homePage .categories .category{animation:none!important}}
+</style>
 </head>
 <body>
 <div class="shell">
@@ -318,3 +345,4 @@ function finish(){clearInterval(tick);let done=questions.reduce((n,q,i)=>n+(answ
 $('finishBtn').onclick=finish;$('retryBtn').onclick=()=>{category=null;start()};$('homeBtn').onclick=()=>showPage('home');
 </script>
 </body></html>
+
