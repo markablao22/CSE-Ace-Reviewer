@@ -49,6 +49,8 @@
 <div class="card"><h2>Customer support</h2><p class="muted">Send a question or report a problem. Sign in to receive a ticket status.</p>
 <form id="supportForm"><label>Subject</label><input class="field" id="supportSubject" maxlength="100" required><label>Message</label><textarea class="field" id="supportMessage" maxlength="2000" rows="4" required></textarea><button class="btn secondary" type="submit">Submit support request</button></form>
 <div id="myTickets" class="notice"></div></div>
+</section>
+<section id="adminPage" class="hidden">
 <div id="adminPanel" class="card hidden"><h2>Administrator review</h2><p class="muted">Only accounts with a trusted Firebase admin claim can review requests.</p><div id="adminPayments"></div><div id="adminTickets"></div></div>
 </section>
 </main>
@@ -257,7 +259,7 @@ $('adminTickets').onclick=async event=>{
   catch(e){button.disabled=false;alert('Could not send the support reply. Check admin access and refresh.');}
 };
 
-function showPage(page){const section=page==='admin'?'account':page;['home','practice','account'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==section));document.querySelectorAll('.nav [data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page))}
+function showPage(page){['home','practice','account','admin'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==page));document.querySelectorAll('.nav [data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page))}
 document.querySelectorAll('.nav [data-page]').forEach(b=>b.onclick=async()=>{const page=b.dataset.page;showPage(page);if(page==='account'||page==='admin')await loadAccountData();if(page==='admin')$('adminPanel').scrollIntoView({behavior:'smooth',block:'start'})});$('startBtn').onclick=()=>start();document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{category=b.dataset.cat;start()});$('bankCount').textContent='500 total questions: 30 free; Premium unlocks all 500.';
 async function start(){
   clearInterval(tick);
