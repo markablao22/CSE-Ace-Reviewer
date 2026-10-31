@@ -29,7 +29,7 @@ button{font:inherit;transition:transform .18s ease,box-shadow .2s ease,border-co
 #authView:not(.hidden),#homePage:not(.hidden),#practicePage:not(.hidden),#accountPage:not(.hidden),#adminPage:not(.hidden){animation:design-page .42s cubic-bezier(.2,.75,.25,1) both}#homePage:not(.hidden) .hero{animation:design-rise .55s cubic-bezier(.2,.75,.25,1) both}#homePage:not(.hidden) .grid .stat{animation:design-rise .48s cubic-bezier(.2,.75,.25,1) both}#homePage:not(.hidden) .grid .stat:nth-child(2){animation-delay:40ms}#homePage:not(.hidden) .grid .stat:nth-child(3){animation-delay:80ms}#homePage:not(.hidden) .grid .stat:nth-child(4){animation-delay:120ms}.feedback{animation:design-page .24s ease-out both}
 @keyframes design-page{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes design-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes design-glow{from{transform:translate3d(-10px,0,0) scale(.95)}to{transform:translate3d(12px,8px,0) scale(1.05)}}
 @media(max-width:700px){.hero:after{opacity:.55}.card:hover,.stat:hover{transform:translateY(-2px)}.category:hover{transform:translateY(-2px)}.nav{gap:4px}.nav button{padding:8px 10px}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+@media(prefers-reduced-motion:reduce){body:not(.motion-on) *,body:not(.motion-on) *:before,body:not(.motion-on) *:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
 <style id="ad-motion">
 #homePage .hero{border-color:#4a718e;background:radial-gradient(ellipse at 82% 46%,#1d718044,transparent 40%),linear-gradient(120deg,#1d355c 0%,#152845 55%,#124353 100%);box-shadow:0 28px 70px #02081780,0 0 0 1px #51d6d015,inset 0 1px 0 #ffffff1c;transform-style:preserve-3d}
@@ -56,12 +56,16 @@ button{font:inherit;transition:transform .18s ease,box-shadow .2s ease,border-co
 #practicePage:not(.hidden)>.card,#accountPage:not(.hidden)>.card,#adminPage:not(.hidden)>.card{animation:ad-page-in .55s cubic-bezier(.2,.75,.25,1) both}
 @keyframes ad-sweep{0%,22%{transform:translateX(-34%)}70%,100%{transform:translateX(34%)}}@keyframes ad-orbit{from{transform:translate3d(-8px,0,0) rotate(-5deg) scale(.96)}to{transform:translate3d(8px,12px,0) rotate(7deg) scale(1.05)}}@keyframes ad-dot{50%{box-shadow:0 0 0 7px #51d6d00d,0 0 21px #51d6d0}}@keyframes ad-cta-pulse{0%,100%{box-shadow:0 10px 25px #51d6d035,inset 0 1px 0 #ffffffc7}50%{box-shadow:0 12px 34px #51d6d064,inset 0 1px 0 #ffffffd9}}@keyframes ad-cta-ring{0%{transform:scale(1);opacity:.65}100%{transform:scale(1.14,1.28);opacity:0}}@keyframes ad-button-shine{0%,25%{transform:translateX(-130%)}58%,100%{transform:translateX(130%)}}@keyframes ad-float-in{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes ad-page-in{from{opacity:0;transform:translateY(15px) scale(.995)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:600px){#homePage .hero .eyebrow:after{content:"EXAM PREP";font-size:9px}#homePage .hero:after{right:-120px;opacity:.5}#homePage .hero p{font-size:15px}#startBtn{width:100%}}
-@media(prefers-reduced-motion:reduce){#homePage .hero:before,#homePage .hero:after,#homePage .hero .eyebrow:before,#startBtn,#startBtn:before,#startBtn:after,#homePage .categories .category{animation:none!important}}
+@media(prefers-reduced-motion:reduce){body:not(.motion-on) #homePage .hero:before,body:not(.motion-on) #homePage .hero:after,body:not(.motion-on) #homePage .hero .eyebrow:before,body:not(.motion-on) #startBtn,body:not(.motion-on) #startBtn:before,body:not(.motion-on) #startBtn:after,body:not(.motion-on) #homePage .categories .category{animation:none!important}}
+</style>
+<style id="motion-toggle-style">
+.header-tools{display:flex;align-items:center;gap:11px}.motion-toggle{padding:7px 10px;border:1px solid #51d6d047;border-radius:999px;background:#102139;color:#cce5f6;font-size:11px;font-weight:750;letter-spacing:.04em;box-shadow:inset 0 1px 0 #ffffff0b;transition:background .2s,border-color .2s,transform .2s}.motion-toggle:hover{background:#18334b;border-color:#51d6d088;transform:translateY(-1px)}.motion-toggle[aria-pressed="true"]{color:#8cf0df;border-color:#51d6d066}.motion-off *, .motion-off *:before,.motion-off *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+@media(max-width:480px){.header-tools{align-items:flex-end;flex-direction:column;gap:4px}.motion-toggle{padding:6px 9px}}
 </style>
 </head>
-<body>
+<body class="motion-on">
 <div class="shell">
-<header class="top"><div class="brand"><div class="logo">A</div><div>CSE ACE <small>CIVIL SERVICE EXAM REVIEWER</small></div></div><div class="user" id="userLabel">Practice mode</div></header>
+<header class="top"><div class="brand"><div class="logo">A</div><div>CSE ACE <small>CIVIL SERVICE EXAM REVIEWER</small></div></div><div class="header-tools"><button class="motion-toggle" id="motionToggle" type="button" aria-pressed="true">Effects: On</button><div class="user" id="userLabel">Practice mode</div></div></header>
 <section id="authView" class="card auth">
 <div class="eyebrow">WELCOME TO YOUR REVIEW HUB</div><h1>Ready to ace the exam?</h1><p class="muted">Sign in or create an account with Firebase. Your account will be available across supported devices.</p>
 <label>Email</label><input class="field" id="email" type="email" placeholder="you@example.com">
@@ -343,6 +347,10 @@ $('checkBtn').onclick=()=>{if(answers[index]===null){$('feedback').textContent='
 $('prevBtn').onclick=()=>{if(index>0){index--;renderQuestion()}};$('nextBtn').onclick=()=>{if(index<questions.length-1){index++;renderQuestion()}};
 function finish(){clearInterval(tick);let done=questions.reduce((n,q,i)=>n+(answers[i]===q[3]?1:0),0),pct=Math.round(done/questions.length*100);questions.forEach((q,i)=>{if(answers[i]!==null&&!checked[i]){stats.answered++;if(answers[i]===q[3])stats.correct++;checked[i]=true}});stats.tests++;saveStats();$('finalScore').textContent=pct+'%';$('resultText').textContent=done+' correct out of '+questions.length+'. Review the explanations by starting another focused practice session.';$('resultBox').classList.remove('hidden');document.querySelector('#practicePage .card').classList.add('hidden')}
 $('finishBtn').onclick=finish;$('retryBtn').onclick=()=>{category=null;start()};$('homeBtn').onclick=()=>showPage('home');
+const motionToggle=$('motionToggle');
+function setMotionEnabled(enabled){document.body.classList.toggle('motion-on',enabled);document.body.classList.toggle('motion-off',!enabled);motionToggle.textContent=enabled?'Effects: On':'Effects: Off';motionToggle.setAttribute('aria-pressed',String(enabled));}
+const savedMotion=localStorage.getItem('cse_motion');setMotionEnabled(savedMotion!=='off');
+motionToggle.onclick=()=>{const enabled=!document.body.classList.contains('motion-on');setMotionEnabled(enabled);localStorage.setItem('cse_motion',enabled?'on':'off');};
 </script>
 </body></html>
 
